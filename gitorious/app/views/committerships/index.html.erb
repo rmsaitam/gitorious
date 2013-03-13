@@ -1,0 +1,89 @@
+<%
+#--
+#   Copyright (C) 2012 Gitorious AS
+#   Copyright (C) 2009 Nokia Corporation and/or its subsidiary(-ies)
+#
+#   This program is free software: you can redistribute it and/or modify
+#   it under the terms of the GNU Affero General Public License as published by
+#   the Free Software Foundation, either version 3 of the License, or
+#   (at your option) any later version.
+#
+#   This program is distributed in the hope that it will be useful,
+#   but WITHOUT ANY WARRANTY; without even the implied warranty of
+#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#   GNU Affero General Public License for more details.
+#
+#   You should have received a copy of the GNU Affero General Public License
+#   along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#++
+%>
+
+<%= breadcrumbs_from(@root) -%>
+
+<h1>
+  <%= t("views.collaborators.title",
+        :repo_name => link_to(h(@repository.name), [@owner, @repository]))  -%>
+</h1>
+
+<table class="listing">
+  <thead>
+    <th><%= t(:created_at, :scope => "activerecord.attributes.committerships").humanize %></th>
+    <th><%= t(:committer_type, :scope => "activerecord.attributes.committerships").humanize %></th>
+    <th><%= t(:committer, :scope => "activerecord.attributes.committerships").humanize %></th>
+    <th><%= t(:permissions, :scope => "activerecord.attributes.committerships").humanize %></th>
+    <th><%= t(:creator, :scope => "activerecord.attributes.committerships").humanize %></th>
+    <th></th>
+  </thead>
+  <% @committerships.each do |committership| -%>
+    <tr class="<%= cycle('even', 'odd') -%>">
+      <td><%= committership.created_at.to_s(:short) -%></td>
+      <td><%= committership.committer.class.human_name -%></td>
+      <td><%= link_to h(committership.committer.title), committership.committer -%></td>
+      <td><%=h committership.permission_list.join(', ') -%></td>
+      <td><%= link_to(h(committership.creator.login), committership.creator) if committership.creator -%>
+      <td class="committer-buttons">
+        <%= button_to(t("views.common.edit"),
+                      [:edit, @owner, @repository, committership], :method => :get) -%>
+        <%= button_to(t("views.common.remove"),
+                      [@owner, @repository, committership], :method => :delete, :confirm => confirmation_if_sole_admin(@repository, committership)) -%>
+      </td>
+    </tr>
+  <% end -%>
+</table>
+
+<% if @repository.public? %>
+  <h2>Repository is open</h2>
+  <p>
+    Anyone with access to <%= @repository.project.title %> can browse and clone
+    this repository.
+  </p>
+<% else %>
+  <h2>Repository is private</h2>
+  <p>Note: To see this project, collaborators on <strong><%= @repository.project.title
+  %></strong> need to be <%= link_to "granted read access",
+  project_repository_repository_memberships_path(@repository.project,
+  @repository) %> in addition to their
+  regular collaborator permissions.
+  </p>
+<% end %>
+
+<%= render_pagination_links @committerships -%>
+
+<%= render "permission_explanation" %>
+
+<% content_for :sidebar do -%>
+  <ul class="links actions navigation">
+    <li>
+      <%= link_to t("views.collaborators.add_new"),
+          [:new, @owner, @containing_project, @repository, :committership] -%>
+    </li>
+    <% if admin?(current_user, @repository) -%>
+      <li class="update_access"><%= link_to "Manage read access", project_repository_repository_memberships_path(@repository.project, @repository) -%></li>
+    <% end -%>
+  </ul>
+
+  <h4>Permission overview:</h4>
+  <%= collaborators("Reviewers", "review", reviewers(@repository)) %>
+  <%= collaborators("Committers", "commit", committers(@repository)) %>
+  <%= collaborators("Administrators", "administrator", administrators(@repository)) %>
+<% end -%>
